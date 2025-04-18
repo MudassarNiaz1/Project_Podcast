@@ -1,0 +1,12 @@
+langchain
+langchain-community
+pypdf
+openai
+gtts
+edge-tts
+groq
+python-dotenv
+nest_asyncio
+ffmpeg 
+moviepy
+flask
