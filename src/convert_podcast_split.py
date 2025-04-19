@@ -1,38 +1,43 @@
-
+import os
 import ast
 import re
-from openai import OpenAI
+import google.generativeai as genai
+from dotenv import load_dotenv
 from src.prompt import final
 
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-def convert_to_podcast_dialogue(cleaned_text: str, api_key: str, system_prompt: str) -> list:
-    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+def convert_to_podcast_dialogue(cleaned_text: str) -> list:
+    if not GOOGLE_API_KEY:
+        raise ValueError("Google API key not found")
 
-    
-    response = client.chat.completions.create(
-        model="meta-llama/llama-4-maverick:free",
-        messages=[
-            {"role": "system", "content": final},
-            {"role": "user", "content": cleaned_text}
-        ]
-    )
+    genai.configure(api_key=GOOGLE_API_KEY)
 
-    content = response.choices[0].message.content.strip()
+    model = genai.GenerativeModel('gemini-1.5-pro')
 
-    # Try parsing directly first
+    # Combine system prompt + user input into a single string
+    full_prompt = f"{final}\n\n{cleaned_text}"
+
+    # No roles, just plain string
+    response = model.generate_content(full_prompt)
+
+    content = response.text.strip()
+    print("==== MODEL RAW OUTPUT ====")
+    print(content)
+    print("==========================")
+
+
     try:
         return ast.literal_eval(content)
-    except (SyntaxError, ValueError):
-        # Fallback: extract only list using regex
+    except Exception:
         match = re.search(r"\[\s*\(.*?\)\s*\]", content, re.DOTALL)
         if match:
             try:
                 return ast.literal_eval(match.group(0))
             except Exception as e:
-                raise ValueError(f"Regex matched, but eval failed: {e}")
-        else:
-            raise ValueError("Could not find valid list of tuples in model response.")
-
+                raise ValueError(f"Regex matched but eval failed: {e}")
+        raise ValueError("Could not parse model output into list of tuples")
 
 
 # # save_dialogue.py
@@ -52,3 +57,5 @@ def save_dialogue_to_files(dialogue: list, s1_path="speaker_1.txt", s2_path="spe
         f2.writelines([line + "\n" for line in speaker_2_lines])
 
     return speaker_1_lines, speaker_2_lines
+
+

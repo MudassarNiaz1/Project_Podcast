@@ -1,7 +1,6 @@
 langchain
 langchain-community
 pypdf
-openai
 gtts
 edge-tts
 groq
